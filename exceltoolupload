@@ -1,0 +1,29 @@
+id:管理员
+Foscns2022
+
+
+前端9091
+后端9092
+
+
+flask run --debug --port 9092
+npm run debug
+
+ssh 管理员@192.168.3.9 -p 22
+
+
+Flask,openpyxl,pandas, numpy uuod flask-cors
+
+
+后端
+ericzhang@MacBook-Pro ExcelBackDocker % docker build -t excel_back_docker:v1.0 .         
+
+
+
+ericzhang@MacBook-Pro ExcelBackDocker % docker run -d -p 9092:9092 excel_back_docker:v1.0
+
+
+前端
+docker run -d -p 9091:9091 excel_front_docker:v1.0
+
+docker build -t excel_front_docker:v1.0 .  
