@@ -24,39 +24,35 @@ pd.set_option('display.max_colwidth',None)
 bp = Blueprint('code', __name__, url_prefix='/code')
 
 """
-    do the 424 coding controller
+    424编码controller层
 """
 """
-    upload files
+    上传源文件接口
 
 """
 @bp.route('/do424Upload',methods=['POST'])
 def do_424_Upload():
     if request.method == 'POST':
-        #get source uploads and unique name
         current_app.logger.debug("Getting upload files.")
+        #获取source_xlsx和result_xlsx的路径
         source_path = os.path.abspath('source_xlsx')
         result_path = os.path.abspath('result_xlsx')
         current_app.logger.debug(source_path);
         current_app.logger.debug(result_path);
-        # check whether the dir is existing
-        # for root, dirs, files in os.walk(source_path):
-        #     for fname in files:
-        #         full_path = os.path.join(root, fname)
-        #         os.chmod(full_path ,stat.S_IWRITE)
+        #首先删除源文件文件夹和结果文件夹避免上一次遗留文件的影响
         remove_file_or_dir(source_path);
         remove_file_or_dir(result_path);
-        #save each xlsx
+        #获取上传的所有excel
         files = request.files.getlist('sourceSheetFiles');
         all_xlsx_addrs = []
         if request.files.get("sourceSheetFiles").filename == '':           
-            current_app.logger.debug("Invalid operation! Empty file received.")
+            current_app.logger.debug("没有收到要上传的文件.")
             result = {
                 "flag" :0,
-                "reason":'Invalid! Empty file received.'
+                "reason":'没有收到要上传的文件.'
             }
-            current_app.logger.debug("result in failure: " + str(result))
-            #return wrong status
+            current_app.logger.debug("上传失败: " + str(result))
+            #返回错误情况下的结果
             resp = json.dumps(result);
             res = make_response(resp);
             res.headers["Access-Control-Allow-Origin"] = "*";
@@ -64,32 +60,35 @@ def do_424_Upload():
         for file in files:
             original_filename = (file.filename)
             unique_filename = (original_filename)
+            #保存每个excel文件
             file.save(os.path.join(source_path, unique_filename))
             each_xlsx_addr = os.path.realpath(unique_filename)
             current_app.logger.debug(each_xlsx_addr)
+            #记录每个文件的路径
             all_xlsx_addrs.append(each_xlsx_addr)
-            current_app.logger.debug("File saved: " + unique_filename)
+            current_app.logger.debug("该文件已保存: " + unique_filename)
 
-        current_app.logger.debug("Finish saving upload sources.")
+        current_app.logger.debug("完成保存源文件.")
+        #上传成功后的返回结果
         result = {
             "flag" : 1,
             "all_xlsx_addrs" : all_xlsx_addrs,
-            "reason":'Successfully uploaded all the files.'
+            "reason":'成功上传所有文件.'
         }
-        current_app.logger.debug("result in success: " + str(result))
-        #return success status
+        current_app.logger.debug("上传成功: " + str(result))
+        #返回上传成功后的结果
         resp = json.dumps(result);
         res = make_response(resp);
         res.headers["Access-Control-Allow-Origin"] = "*";
         return res;
     else:
-        current_app.logger.debug("Invalid operation! Method not POST.")
+        current_app.logger.debug("非POST请求,接口拒绝.")
         result = {
             "flag" :0,
-            "reason":'Invalid! Please use POST method.'
+            "reason":'请使用POST请求.'
         }
-        current_app.logger.debug("result in failure: " + str(result))
-        #return wrong status
+        current_app.logger.debug("上传失败: " + str(result))
+        #返回失败后的结果
         resp = json.dumps(result);
         res = make_response(resp);
         res.headers["Access-Control-Allow-Origin"] = "*";
@@ -97,51 +96,54 @@ def do_424_Upload():
 
 
 """
-    do coding process
+    编码接口
 """
 @bp.route('/do424Code',methods=['GET'])
 def do_424_Code():
+    #获取用到的文件夹路径
     source_path = os.path.abspath('source_xlsx')
     result_path = os.path.abspath('result_xlsx')
     backend_path = os.path.abspath('backend_xlsx')
+    #如果source_path下没有上传文件或者模版文件都为空时
     if len (os.listdir (source_path)) == 0 or len(os.listdir(backend_path)) == 0:
-        current_app.logger.debug("Invalid operation! No files uploaded. Cannot code.")
+        current_app.logger.debug("没有上传文件或者模版为空，无法编码")
         result = {
             "flag" : 0,
-            "reason" : "Invalid operation! No files uploaded. Cannot code.",
+            "reason" : "没有上传文件或者模版为空，无法编码.",
         }
-        current_app.logger.debug("result in failed: " + str(result))
-        #return wrong status
+        current_app.logger.debug("编码失败: " + str(result))
+        #返回错误结果
         resp = json.dumps(result);
         res = make_response(resp);
         res.headers["Access-Control-Allow-Origin"] = "*";
         return res;
 
-    #process each file
+    #对每个文件进行编码
     current_app.logger.debug("Start coding saved sources.")
     unique_name_files = os.listdir(source_path)
-
+    #用于存储每个文件的debug信息
     result_all_xlsxs = []
-    #check whether the unique name files exist
+    #再次确认如果没有上传源文件，则不进行编码
     if(len(unique_name_files) == 0):
-        current_app.logger.debug("No files in source xlsx dir.")
+        current_app.logger.debug("source_xlsx文件夹没有上传待编码文件.")
         result = {
             "flag" :0,
-            "reason":'Invalid! No files in source xlsx dir.'
+            "reason":'source_xlsx文件夹没有上传待编码文件.'
         }
-        current_app.logger.debug("result in failed: " + str(result))
-        #return wrong status
+        current_app.logger.debug("编码失败: " + str(result))
+        #返回错误结果
         resp = json.dumps(result);
         res = make_response(resp);
         res.headers["Access-Control-Allow-Origin"] = "*";
         return res;
     try:
+        #编码过程
         for file in unique_name_files:
-            current_app.logger.debug(f'processing sources {file} now.')
+            current_app.logger.debug(f'正在编码： {file} now.')
             path = source_path+"/"+file;
             template_path = backend_path+'/424template.xlsx'
             Enroute_path = backend_path+'/1_ZBZL航路部分.xlsx'
-            # result_each_xlsx = {}
+            #利用顺序字典维护debug信息添加顺序
             result_each_xlsx = collections.OrderedDict()
             result_each_xlsx.setdefault("file", file)
             result_each_xlsx.setdefault(str(datetime.datetime.now()), "开始处理"+file)
@@ -186,41 +188,39 @@ def do_424_Code():
             SupplementarySpace(TEMPLATE_DATA, PD_char_count,result_each_xlsx)
             result_each_xlsx.setdefault(str(datetime.datetime.now()), "结束处理"+file)
           
-
+            #将编码结果输出为excel文件
             wb = Workbook();
             wb.save(filename=result_path + "/output-" + file);
             writer = pd.ExcelWriter(path=result_path + "/output-" + file, engine='openpyxl')
             TEMPLATE_DATA.to_excel(result_path + "/output-" + file, index=False)
-            
-
             result_all_xlsxs.append(result_each_xlsx)
-           
+            #清空这次debug信息为下次存储做准备
             result_each_xlsx = collections.OrderedDict()
 
 
-        current_app.logger.debug("Valid operation! Finished all file coding.")
+        current_app.logger.debug("成功结束所有文件编码。")
         result = {
             "flag" : 1,
             "result_all_xlsxs": result_all_xlsxs
         }
-        current_app.logger.debug("result in success: " + str(result))
-        #return wrong status
+        current_app.logger.debug("编码成功: " + str(result))
+        #返回错误结果
         resp = json.dumps(result);
         res = make_response(resp);
         res.headers["Access-Control-Allow-Origin"] = "*";
         return res;
 
     except Exception as e:
-        current_app.logger.debug("Invalid operation! Interrupt all file coding.")
+        current_app.logger.debug("出现错误，终止编码.")
+        #记录错误信息返回给前端debug信息展示
         result_each_xlsx.setdefault(str(datetime.datetime.now()), "出现错误：" + str(e.args))
         result_all_xlsxs.append(result_each_xlsx)
-
         result = {
             "flag" : 2,
             "result_all_xlsxs": result_all_xlsxs
         }
         current_app.logger.debug("result in failed: " + str(result))
-        #return wrong status
+        #返回错误结果
         resp = json.dumps(result);
         res = make_response(resp);
         res.headers["Access-Control-Allow-Origin"] = "*";

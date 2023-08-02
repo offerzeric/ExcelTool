@@ -2,7 +2,7 @@ from flask import Flask, json
 from backend.code_in_424.code_in_424_controller import bp as code_in_424_bp
 from werkzeug.exceptions import HTTPException
 from flask_cors import CORS
-
+#创建app入口
 def create_app():
     app = Flask(__name__)   
     app.register_blueprint(code_in_424_bp)
@@ -11,11 +11,11 @@ def create_app():
 
 
 app = create_app();
-#solve cors
+#解决跨域问题
 CORS(app);
 
 
-#exception handler
+#全局的异常处理
 @app.errorhandler(HTTPException)
 def handle_http_exceptions(exception):
     response = exception.get_response()
